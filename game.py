@@ -11,14 +11,20 @@ from pygame.locals import *
 pygame.init()
 clock = pygame.time.Clock()
 
-# Object Types #
+width,height = 650,600
+wsize = (width,height)
+
+window = pygame.display.set_mode(wsize)
+pygame.display.set_caption('Game Prototype')
+
+# Game Objects ----------------------------------------------------------------------
 
 activeObjects = pygame.sprite.Group() # group of objects to run update() every frame
 drawObjects = pygame.sprite.Group() # group of objects to be drawn every frame
 
 class Object(pygame.sprite.Sprite):
     """Base class for all game objects"""
-    def __init__(self,pos=(0,0),img=""):
+    def __init__(self,pos=(0,0),img="",rect=""):
         pygame.sprite.Sprite.__init__(self)
         self.pos = pos
         if img is not "": # if img is anything other than an empty string
@@ -29,8 +35,11 @@ class Object(pygame.sprite.Sprite):
                     self.image = pygame.image.load(img).convert()
                 except: # if, for any reason, this fails, mock the user
                     print 'My God, what were you trying to DO?'
-            self.rect = self.image.get_rect() # use image-generated rect
-            self.rect.center = self.pos # position rect at pos
+            if rect == "":
+                self.rect = self.image.get_rect() # use image-generated rect
+                self.rect.center = self.pos # position rect at pos
+            elif type(rect) is pygame.Rect:
+                self.rect = rect # assign existing rect
             self.add(drawObjects)
         self.add(activeObjects) # Add to group containing all active objects
 
@@ -62,7 +71,7 @@ class Grid(Object):
             xHopper += dimension # hop by one space horizontally
     def loop(self,column):
         """Shift grid spaces to the very right edge when they are offscreen left"""
-        if column[0].bottomright[0] < 0: #and column[0].bottomright[1] < 0:
+        if column[0].bottomright[0] < 0:
             for q in column: # for each rect in column
                 q.topleft = (self.mapping[len(self.mapping)-1][column.index(q)].topright[0]+1,
                              q.topleft[1]) # move to the right of the very last rects
@@ -74,7 +83,15 @@ class Grid(Object):
                 haju.topleft = (haju.topleft[0]-1,haju.topleft[1])
                 #pygame.draw.rect(window,(120,0,0),haju,3)
 
-class Scales():
+class Note(Object):
+    """Object that sounds a designated pitch following collision with Player"""
+    def __init__(self,tone,grid):
+        Object.__init__(self,img="defSprite.bmp",rect=grid.mapping[len(grid.mapping)-1]
+                        [chromatic.index(tone)]) # assign vertical position by tone
+
+# Music Control Objects -------------------------------------------------------------
+
+class Scales:
     """Class for scale structures (not game object)"""
     def __init__(self,tonic,mode):
         self.scale = Scales.genScale(tonic,mode)
@@ -128,19 +145,15 @@ class MusicControl(Object):
     def getTriad(scale):
         return [scale[0],scale[2],scale[4]]
 
-chromatic = ('a','a#','b','c','c#','d',
-             'd#','e','f','f#','g','g#')
+# Data Constants --------------------------------------------------------------------
+
+chromatic = ('c','c#','d','d#','e','f',
+             'f#','g','g#','a','a#','b')
 modes = {'maj': (2,2,1,2,2,2,1),'nmin': (2,1,2,2,1,2,2),
          'hmin': (2,1,2,2,1,3,1),'jmin': (2,1,2,2,2,2,1)}
 scales = Scales.getAllScales()
 
-# Game Initialization #
-
-width,height = 650,600
-wsize = (width,height)
-
-window = pygame.display.set_mode(wsize)
-pygame.display.set_caption('Game Prototype')
+# Game Initialization ---------------------------------------------------------------
 
 def gameloop():
     for event in pygame.event.get():
@@ -168,7 +181,6 @@ compats.sort()
 print compats
 flimmy = Player()
 raga = Grid()
-stimpy = Object(img="defSprite.bmp")
-stimpy.rect = raga.mapping[3][18]
+stimpy = Note(tone='f',grid=raga)
 while True:
     gameloop()
