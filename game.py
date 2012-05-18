@@ -100,18 +100,18 @@ class Scales:
     @staticmethod
     def genScale(tonic,mode):
         """Return the given scale for the given tonic in a list"""
-        tonic = tonic.lower() # chromatic uses lowercase characters #
-        if tonic not in chromatic: # if tonic is not a valid musical note #
+        tonic = tonic.lower() # chromatic uses lowercase characters
+        if tonic not in chromatic: # if tonic is not a valid musical note
             return False
-        if mode not in modes: # if mode is not in the modes dictionary #
-            mode = 'maj' # use major scale by default #
+        if mode not in modes: # if mode is not in the modes dictionary
+            mode = 'maj' # use major scale by default
         fScale = []
         chromaticExtended = chromatic+chromatic
-        # ^ Allow for reaching the end of chromatic and resuming from the beginning #
+        # ^ Allow for reaching the end of chromatic and resuming from the beginning
         x = chromaticExtended.index(tonic)
         for wallabee in modes[mode]:
-                      # ^ gets increments for given scale #
-            x += wallabee # move through chromatic by the specified increment #
+                      # ^ gets increments for given scale
+            x += wallabee # move through chromatic by the specified increment
             fScale.append(chromaticExtended[x])
         fScale.insert(0,fScale.pop()) # place tonic at beginning
         return fScale
