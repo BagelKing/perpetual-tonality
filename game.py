@@ -1,9 +1,11 @@
 # To do:
 # Lilypond notation output
-# Grid system
 # Musical notes
 # Collision checks
 # The rest of the fucking game
+
+# Surface.convert() is run for surface objects to save drawing time because
+# PyGame otherwise runs .convert() on every blit
 
 import pygame, sys, random
 from pygame.locals import *
@@ -15,6 +17,7 @@ width,height = 650,600
 wsize = (width,height)
 
 window = pygame.display.set_mode(wsize)
+window.fill((125,125,125))
 pygame.display.set_caption('Game Prototype')
 
 # Game Objects ----------------------------------------------------------------------
@@ -40,8 +43,15 @@ class Object(pygame.sprite.Sprite):
                 self.rect.center = self.pos # position rect at pos
             elif type(rect) is pygame.Rect:
                 self.rect = rect # assign existing rect
-            self.add(drawObjects)
+            self.add(drawObjects) # Add to group containing drawn objects
         self.add(activeObjects) # Add to group containing all active objects
+    def clean(self):
+        """Place a patch of background over the sprite; should be run before
+        drawing"""
+        patch = pygame.surface.Surface((self.rect.width,self.rect.height)).convert()
+        # ^ Generate surface using the dimensions of rect
+        patch.fill((125,125,125)) # Fill patch with gray
+        window.blit(patch,self.rect) # Blit to window
 
 class Player(Object):
     """Player-controlled pixie, guided by the mouse"""
@@ -61,7 +71,7 @@ class Grid(Object):
         dimension = height/24 # value for height and width of grid spaces (create exactly 24)
         xHopper = -dimension # begin one space to the left of (0,0) for buffer column
         for x in range((width/dimension)+2): # number of spaces that will fit horizontally,
-            column = []                      # plus 2
+            column = [] # plus 2
             yHopper = 0 # begin at top of screen
             for y in range(24):
                 column.append(pygame.Rect((xHopper,yHopper),(dimension,dimension)))
@@ -76,7 +86,7 @@ class Grid(Object):
                 q.topleft = (self.mapping[len(self.mapping)-1][column.index(q)].topright[0]+1,
                              q.topleft[1]) # move to the right of the very last rects
             self.mapping.append(self.mapping.pop(0)) # move column to end of mapping
-    def update(self):
+    def move(self):
         for pimu in self.mapping:
             self.loop(pimu)
             for haju in pimu:
@@ -86,7 +96,11 @@ class Grid(Object):
 class Note(Object):
     """Object that sounds a designated pitch following collision with Player"""
     def __init__(self,tone,grid):
-        Object.__init__(self,img="defSprite.bmp",rect=grid.mapping[len(grid.mapping)-1]
+        space = grid.mapping[0][0]
+        noteSrf = pygame.surface.Surface((space.height,space.width))
+        noteSrf.fill((200,100,100))
+        pygame.draw.rect(noteSrf,(100,200,100),noteSrf.get_rect(),3)
+        Object.__init__(self,img=noteSrf,rect=grid.mapping[len(grid.mapping)-1]
                         [chromatic.index(tone)]) # assign vertical position by tone
 
 # Music Control Objects -------------------------------------------------------------
@@ -100,18 +114,18 @@ class Scales:
     @staticmethod
     def genScale(tonic,mode):
         """Return the given scale for the given tonic in a list"""
-        tonic = tonic.lower() # chromatic uses lowercase characters #
-        if tonic not in chromatic: # if tonic is not a valid musical note #
+        tonic = tonic.lower() # chromatic uses lowercase characters
+        if tonic not in chromatic: # if tonic is not a valid musical note
             return False
-        if mode not in modes: # if mode is not in the modes dictionary #
-            mode = 'maj' # use major scale by default #
+        if mode not in modes: # if mode is not in the modes dictionary
+            mode = 'maj' # use major scale by default
         fScale = []
         chromaticExtended = chromatic+chromatic
-        # ^ Allow for reaching the end of chromatic and resuming from the beginning #
+        # ^ Allow for reaching the end of chromatic and resuming from the beginning
         x = chromaticExtended.index(tonic)
         for wallabee in modes[mode]:
-                      # ^ gets increments for given scale #
-            x += wallabee # move through chromatic by the specified increment #
+                      # ^ gets increments for given scale
+            x += wallabee # move through chromatic by the specified increment
             fScale.append(chromaticExtended[x])
         fScale.insert(0,fScale.pop()) # place tonic at beginning
         return fScale
@@ -155,21 +169,6 @@ scales = Scales.getAllScales()
 
 # Game Initialization ---------------------------------------------------------------
 
-def gameloop():
-    for event in pygame.event.get():
-        print event
-        if event.type == QUIT:
-            pygame.quit()
-            #sys.exit()
-            break
-
-    window.fill((125,125,125))
-    activeObjects.update()
-    drawObjects.draw(window)
-
-    pygame.display.update()
-    clock.tick(60)
-
 compats = []
 compatScales = MusicControl.getCompatibleScales(['a','f#','d','e'])
 print compatScales
@@ -182,5 +181,23 @@ print compats
 flimmy = Player()
 raga = Grid()
 stimpy = Note(tone='f',grid=raga)
+
+def gameloop():
+    for event in pygame.event.get():
+        print event
+        if event.type == QUIT:
+            pygame.quit()
+            #sys.exit()
+            break
+
+    for a in drawObjects.sprites():
+        a.clean() # clear sprites
+    raga.move() # move grid
+    activeObjects.update() # update active objects
+    drawObjects.draw(window) # draw sprites
+
+    pygame.display.update()
+    clock.tick(60)
+    
 while True:
     gameloop()
