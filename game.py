@@ -1,7 +1,6 @@
 # To do:
 # Lilypond notation output
-# Musical notes
-# Collision checks
+# Finish musical notes
 # The rest of the fucking game
 
 # Surface.convert() is run for surface objects to save drawing time because
@@ -52,6 +51,9 @@ class Object(pygame.sprite.Sprite):
         # ^ Generate surface using the dimensions of rect
         patch.fill((125,125,125)) # Fill patch with gray
         window.blit(patch,self.rect) # Blit to window
+    def on_collide(self):
+        """Perform on collision with player"""
+        pass
 
 class Player(Object):
     """Player-controlled pixie, guided by the mouse"""
@@ -90,18 +92,23 @@ class Grid(Object):
         for pimu in self.mapping:
             self.loop(pimu)
             for haju in pimu:
-                haju.topleft = (haju.topleft[0]-1,haju.topleft[1])
+                haju.topleft = (haju.topleft[0]-2,haju.topleft[1])
                 #pygame.draw.rect(window,(120,0,0),haju,3)
 
 class Note(Object):
     """Object that sounds a designated pitch following collision with Player"""
     def __init__(self,tone,grid):
-        space = grid.mapping[0][0]
+        space = grid.mapping[0][0] # Example space to get dimensions
         noteSrf = pygame.surface.Surface((space.height,space.width))
-        noteSrf.fill((200,100,100))
-        pygame.draw.rect(noteSrf,(100,200,100),noteSrf.get_rect(),3)
+        noteSrf.fill((200,100,100)) # create new surface for Note from space dimensions
+        pygame.draw.rect(noteSrf,(100,200,100),noteSrf.get_rect(),3) # draw rect to noteSrf
         Object.__init__(self,img=noteSrf,rect=grid.mapping[len(grid.mapping)-1]
                         [chromatic.index(tone)]) # assign vertical position by tone
+    def on_collide(self):
+        """Play note and destroy self"""
+        pygame.mixer.Sound("b'.wav").play()
+        self.kill() # Remove Sprite from all groups
+        
 
 # Music Control Objects -------------------------------------------------------------
 
@@ -131,12 +138,11 @@ class Scales:
         return fScale
     @staticmethod
     def getAllScales():
-        """Return all scales (that are dealt with by this program)"""
-        MegaScale = [] # v (below) a global list should be made for these
+        """Yield all scales (that are dealt with by this program)"""
+                 # v (below) a global list should be made for these
         for a in ['maj','nmin','hmin','jmin']: # for each scale mode
             for b in chromatic: # for each note in the chromatic scale
-                MegaScale.append(Scales.genScale(b,a)) # add scale b in mode a
-        return tuple(MegaScale)
+                yield Scales.genScale(b,a) # yield scale b in mode a
 
 class MusicControl(Object):
     """Responsible for the generation of music"""
@@ -165,7 +171,7 @@ chromatic = ('c','c#','d','d#','e','f',
              'f#','g','g#','a','a#','b')
 modes = {'maj': (2,2,1,2,2,2,1),'nmin': (2,1,2,2,1,2,2),
          'hmin': (2,1,2,2,1,3,1),'jmin': (2,1,2,2,2,2,1)}
-scales = Scales.getAllScales()
+scales = tuple([x for x in Scales.getAllScales()])
 
 # Game Initialization ---------------------------------------------------------------
 
@@ -178,13 +184,15 @@ for a in compatScales:
             compats.append(b)
 compats.sort()
 print compats
+print scales
 flimmy = Player()
 raga = Grid()
+pygame.mixer.init()
 stimpy = Note(tone='f',grid=raga)
 
 def gameloop():
     for event in pygame.event.get():
-        print event
+        #print event
         if event.type == QUIT:
             pygame.quit()
             #sys.exit()
@@ -194,9 +202,11 @@ def gameloop():
         a.clean() # clear sprites
     raga.move() # move grid
     activeObjects.update() # update active objects
+    for x in pygame.sprite.spritecollide(flimmy,drawObjects,False):
+        x.on_collide()
     drawObjects.draw(window) # draw sprites
 
-    pygame.display.update()
+    pygame.display.update([x.rect for x in drawObjects])
     clock.tick(60)
     
 while True:
