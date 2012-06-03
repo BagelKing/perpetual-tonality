@@ -1,4 +1,7 @@
 # To do:
+#
+# Fix sounds not playing
+#
 # Lilypond notation output
 # Finish musical notes
 # The rest of the fucking game
@@ -18,11 +21,13 @@ wsize = (width,height)
 window = pygame.display.set_mode(wsize)
 window.fill((125,125,125))
 pygame.display.set_caption('Game Prototype')
+pygame.display.update()
 
 # Game Objects ----------------------------------------------------------------------
 
 activeObjects = pygame.sprite.Group() # group of objects to run update() every frame
 drawObjects = pygame.sprite.Group() # group of objects to be drawn every frame
+dirtyRects = [] # list of rects that have been altered on screen
 
 class Object(pygame.sprite.Sprite):
     """Base class for all game objects"""
@@ -51,6 +56,8 @@ class Object(pygame.sprite.Sprite):
         # ^ Generate surface using the dimensions of rect
         patch.fill((125,125,125)) # Fill patch with gray
         window.blit(patch,self.rect) # Blit to window
+        dirtyRects.append(Rect(self.rect.topleft,(self.rect.height,self.rect.width)))
+        # ^ Add to portion of screen to be updated
     def on_collide(self):
         """Perform on collision with player"""
         pass
@@ -64,6 +71,7 @@ class Player(Object):
     def update(self):
         self.pos = (100,pygame.mouse.get_pos()[1]) # set pos to (100,mouse-y)
         self.rect.center = self.pos # update rect to pos (image is placed using rect)
+        dirtyRects.append(self.rect)
 
 class Grid(Object):
     """Moving grid that contains objects other than Player"""
@@ -97,18 +105,29 @@ class Grid(Object):
 
 class Note(Object):
     """Object that sounds a designated pitch following collision with Player"""
-    def __init__(self,tone,grid):
+    def __init__(self,tone,grid): # tone = q' (with notation)
         space = grid.mapping[0][0] # Example space to get dimensions
         noteSrf = pygame.surface.Surface((space.height,space.width))
         noteSrf.fill((200,100,100)) # create new surface for Note from space dimensions
         pygame.draw.rect(noteSrf,(100,200,100),noteSrf.get_rect(),3) # draw rect to noteSrf
+        if tone not in sounds:
+            if tone+"'" in sounds:
+                tone += "'"
+            else:
+                pass # Should gracefully cancel creation of note
+        self.sound = sounds[tone]
+        print tone,self.sound
         Object.__init__(self,img=noteSrf,rect=grid.mapping[len(grid.mapping)-1]
-                        [chromatic.index(tone)]) # assign vertical position by tone
+                        [chromatic.index(tone[0])]) # assign vertical position by tone
+    def update(self):
+        dirtyRects.append(self.rect)
     def on_collide(self):
         """Play note and destroy self"""
-        pygame.mixer.Sound("b'.wav").play()
+        pygame.mixer.find_channel().play(self.sound)
+        print self.sound
         self.kill() # Remove Sprite from all groups
-        
+        Note(chromatic[int(random.random()*12)],raga)
+
 
 # Music Control Objects -------------------------------------------------------------
 
@@ -172,6 +191,12 @@ chromatic = ('c','c#','d','d#','e','f',
 modes = {'maj': (2,2,1,2,2,2,1),'nmin': (2,1,2,2,1,2,2),
          'hmin': (2,1,2,2,1,3,1),'jmin': (2,1,2,2,2,2,1)}
 scales = tuple([x for x in Scales.getAllScales()])
+sounds = {"c'": pygame.mixer.Sound("c'.wav"), "c#'": pygame.mixer.Sound("c#'.wav"),
+          "d'": pygame.mixer.Sound("d'.wav"), "d#'": pygame.mixer.Sound("d#'.wav"),
+          "e'": pygame.mixer.Sound("e'.wav"), "f'": pygame.mixer.Sound("f'.wav"),
+          "f#'": pygame.mixer.Sound("f#'.wav"), "g'": pygame.mixer.Sound("g'.wav"),
+          "g#'": pygame.mixer.Sound("g#'.wav"), "a'": pygame.mixer.Sound("a'.wav"),
+          "a#'": pygame.mixer.Sound("a#'.wav"), "b'": pygame.mixer.Sound("b'.wav")}
 
 # Game Initialization ---------------------------------------------------------------
 
@@ -188,7 +213,7 @@ print scales
 flimmy = Player()
 raga = Grid()
 pygame.mixer.init()
-stimpy = Note(tone='f',grid=raga)
+stimpy = Note(tone='b',grid=raga)
 
 def gameloop():
     for event in pygame.event.get():
@@ -203,11 +228,14 @@ def gameloop():
     raga.move() # move grid
     activeObjects.update() # update active objects
     for x in pygame.sprite.spritecollide(flimmy,drawObjects,False):
-        x.on_collide()
+        # ^ for objects colliding with player
+        x.on_collide() # perform collision events
     drawObjects.draw(window) # draw sprites
 
-    pygame.display.update([x.rect for x in drawObjects])
+    pygame.display.update(dirtyRects) # update areas of screen that have changed
     clock.tick(60)
+
+    for i in dirtyRects: dirtyRects.remove(i) # emtpy dirtyRects
     
 while True:
     gameloop()
