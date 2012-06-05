@@ -1,9 +1,6 @@
 # To do:
 #
-# Fix sounds not playing
-#
 # Lilypond notation output
-# Finish musical notes
 # The rest of the fucking game
 
 # Surface.convert() is run for surface objects to save drawing time because
@@ -96,6 +93,10 @@ class Grid(Object):
                 q.topleft = (self.mapping[len(self.mapping)-1][column.index(q)].topright[0]+1,
                              q.topleft[1]) # move to the right of the very last rects
             self.mapping.append(self.mapping.pop(0)) # move column to end of mapping
+            for x in drawObjects:
+                if x.rect in self.mapping[len(self.mapping)-1]:
+                    x.kill() # kill sprites when they go offscreen
+            Note(Scales.genScale('e','maj')[int(random.random()*7)],self)
     def move(self):
         for pimu in self.mapping:
             self.loop(pimu)
@@ -107,6 +108,7 @@ class Note(Object):
     """Object that sounds a designated pitch following collision with Player"""
     def __init__(self,tone,grid): # tone = q' (with notation)
         space = grid.mapping[0][0] # Example space to get dimensions
+        self.tone = tone
         noteSrf = pygame.surface.Surface((space.height,space.width))
         noteSrf.fill((200,100,100)) # create new surface for Note from space dimensions
         pygame.draw.rect(noteSrf,(100,200,100),noteSrf.get_rect(),3) # draw rect to noteSrf
@@ -123,11 +125,12 @@ class Note(Object):
         dirtyRects.append(self.rect)
     def on_collide(self):
         """Play note and destroy self"""
-        pygame.mixer.find_channel().play(self.sound)
+        try:
+            pygame.mixer.find_channel().play(self.sound)
+        except:
+            print "SOUND FAILURE: "+self.tone
         print self.sound
         self.kill() # Remove Sprite from all groups
-        Note(chromatic[int(random.random()*12)],raga)
-
 
 # Music Control Objects -------------------------------------------------------------
 
