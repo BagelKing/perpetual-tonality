@@ -1,8 +1,7 @@
 # To do:
-#
+#   
 # Lilypond notation output
 # The rest of the fucking game
-
 # Surface.convert() is run for surface objects to save drawing time because
 # PyGame otherwise runs .convert() on every blit
 
@@ -64,9 +63,19 @@ class Player(Object):
     def __init__(self,pos=(100,height/2)): # position vertically center
         pygame.mouse.set_visible(False) # set mouse invisible
         pygame.mouse.set_pos(pos) # set mouse at pos
-        Object.__init__(self,pos,"defSprite.bmp")
+        playerSrf = pygame.surface.Surface((5,5)).convert()
+        playerSrf.fill((0,255,0))
+        Object.__init__(self,pos,playerSrf)
     def update(self):
-        self.pos = (100,pygame.mouse.get_pos()[1]) # set pos to (100,mouse-y)
+        mpos = pygame.mouse.get_pos()
+        if mpos[1] > self.pos[1]:
+            self.pos = (100,self.pos[1]+10)
+            pygame.mouse.set_pos(self.pos)
+        elif mpos[1] < self.pos[1]:
+            self.pos = (100,self.pos[1]-10)
+            pygame.mouse.set_pos(self.pos)
+        # ^ To prevent Player skipping over Notes
+        #self.pos = (100,pygame.mouse.get_pos()[1]) # set pos to (100,mouse-y)
         self.rect.center = self.pos # update rect to pos (image is placed using rect)
         dirtyRects.append(self.rect)
 
@@ -187,6 +196,29 @@ class MusicControl(Object):
     def getTriad(scale):
         return [scale[0],scale[2],scale[4]]
 
+class SoundControl(Object):
+    """Control the PyGame Mixer module"""
+    def __init__(self,vol=1.0):
+        Object.__init__(self)
+        self.vol = vol
+    def set_vol(self):
+        """Apply self.vol to all sound channels"""
+        for a in range(pygame.mixer.get_num_channels()): # for a in list of channel IDs
+            pygame.mixer.Channel(a).set_volume(self.vol) # set Channel(a) volume to self.vol
+    def update(self):
+         for event in pygame.event.get():
+            if event.type == MOUSEBUTTONDOWN:
+                if event.button == 5: # if scroll wheel down
+                    print "Scroll Wheel Down"
+                    if self.vol > 0.0: # if volume is not 0
+                        self.vol -= 0.1 # reduce volume by 0.1
+                        self.set_vol() # apply new volume to all channels
+                elif event.button == 4: # else if scroll wheel up
+                    print "Scroll Wheel Up"
+                    if self.vol < 1.0: # if volume is not max
+                        self.vol += 0.1 # increase volume by 0.1
+                        self.set_vol() # apply new volume to all channels
+
 # Data Constants --------------------------------------------------------------------
 
 chromatic = ('c','c#','d','d#','e','f',
@@ -214,6 +246,7 @@ compats.sort()
 print compats
 print scales
 flimmy = Player()
+valjean = SoundControl()
 raga = Grid()
 pygame.mixer.init()
 stimpy = Note(tone='b',grid=raga)
