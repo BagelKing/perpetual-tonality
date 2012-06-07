@@ -110,7 +110,7 @@ class Grid(Object):
             for x in drawObjects:
                 if x.rect in self.mapping[len(self.mapping)-1]:
                     x.kill() # kill sprites when they go offscreen
-            Note(Scales.genScale('c','maj')[int(random.random()*7)],self)
+            Note(Scale.genScale('c','maj')[int(random.random()*7)],self)
     def move(self):
         for pimu in self.mapping:
             self.loop(pimu)
@@ -148,11 +148,11 @@ class Note(Object):
 
 # Music Control Objects -------------------------------------------------------------
 
-class Scales:
+class Scale:
     """Class for scale structures (not game object)"""
-    def __init__(self,tonic,mode):
-        self.scale = Scales.genScale(tonic,mode)
-        self.tonic = self.scale[0]
+    def __init__(self,tonic='c',mode='maj'):
+        self.scale = Scale.genScale(tonic,mode)
+        self.tonic = tonic
         self.mode = mode
     @staticmethod
     def genScale(tonic,mode):
@@ -178,7 +178,15 @@ class Scales:
                  # v (below) a global list should be made for these
         for a in ['maj','nmin','hmin','jmin']: # for each scale mode
             for b in chromatic: # for each note in the chromatic scale
-                yield Scales.genScale(b,a) # yield scale b in mode a
+                yield Scale.genScale(b,a) # yield scale b in mode a
+
+class Chord:
+    """Classs for chord structures (not game object)"""
+    def __init__(self,scale,root):
+        self.scale = scale.scale
+        scaleExt = scale.scale+scale.scale # allow for continuation from start
+        self.chord = [scaleExt[root-1],scaleExt[root+1],scaleExt[root+3]]
+        # ^ Generate triad
 
 class MusicControl(Object):
     """Responsible for the generation of music"""
@@ -230,7 +238,7 @@ chromatic = ('c','c#','d','d#','e','f',
              'f#','g','g#','a','a#','b')
 modes = {'maj': (2,2,1,2,2,2,1),'nmin': (2,1,2,2,1,2,2),
          'hmin': (2,1,2,2,1,3,1),'jmin': (2,1,2,2,2,2,1)}
-scales = tuple([x for x in Scales.getAllScales()])
+scales = tuple([x for x in Scale.getAllScales()])
 sounds = {"c'": pygame.mixer.Sound("c'.wav"), "c#'": pygame.mixer.Sound("c#'.wav"),
           "d'": pygame.mixer.Sound("d'.wav"), "d#'": pygame.mixer.Sound("d#'.wav"),
           "e'": pygame.mixer.Sound("e'.wav"), "f'": pygame.mixer.Sound("f'.wav"),
