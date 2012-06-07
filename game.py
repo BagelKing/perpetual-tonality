@@ -65,26 +65,31 @@ class Player(Object):
         pygame.mouse.set_pos(pos) # set mouse at pos
         playerSrf = pygame.surface.Surface((5,5)).convert()
         playerSrf.fill((0,255,0))
-        Object.__init__(self,pos,playerSrf)
+        Object.__init__(self,pos,"defSprite.bmp")
     def update(self):
-        mpos = pygame.mouse.get_pos()
-        if mpos[1] > self.pos[1]:
-            self.pos = (100,self.pos[1]+10)
-            pygame.mouse.set_pos(self.pos)
-        elif mpos[1] < self.pos[1]:
-            self.pos = (100,self.pos[1]-10)
-            pygame.mouse.set_pos(self.pos)
-        # ^ To prevent Player skipping over Notes
-        #self.pos = (100,pygame.mouse.get_pos()[1]) # set pos to (100,mouse-y)
+        dist = pygame.mouse.get_pos()[1]-self.pos[1] # get interval of mouse movement
+        dim = Grid.dimensions() # size of a grid space
+        if dist > dim or (-dist) > dim: # if mouse movement is greater than dim
+            if dist < 0: dist = -dim # if movement negative, reduce to dim in negative direction
+            else: dist = dim # if movement positive, reduce to dim in positive direction
+            self.pos = (100,self.pos[1]+dist) # move pos to new location
+            pygame.mouse.set_pos(self.pos) # move mouse to new location
+        # ^ To prevent Player skipping over notes
+        else:
+            self.pos = (100,self.pos[1]+dist) # move pos to new location
         self.rect.center = self.pos # update rect to pos (image is placed using rect)
         dirtyRects.append(self.rect)
 
 class Grid(Object):
     """Moving grid that contains objects other than Player"""
+    @staticmethod
+    def dimensions():
+        """Get value for height and width of grid spaces (fit exactly 24x24 onscreen)"""
+        return height/24
     def __init__(self):
         Object.__init__(self)
         self.mapping = [] # empty list to be filled with columns (lists) of rects
-        dimension = height/24 # value for height and width of grid spaces (create exactly 24)
+        dimension = Grid.dimensions() # get dimensions to use
         xHopper = -dimension # begin one space to the left of (0,0) for buffer column
         for x in range((width/dimension)+2): # number of spaces that will fit horizontally,
             column = [] # plus 2
@@ -105,7 +110,7 @@ class Grid(Object):
             for x in drawObjects:
                 if x.rect in self.mapping[len(self.mapping)-1]:
                     x.kill() # kill sprites when they go offscreen
-            Note(Scales.genScale('e','maj')[int(random.random()*7)],self)
+            Note(Scales.genScale('c','maj')[int(random.random()*7)],self)
     def move(self):
         for pimu in self.mapping:
             self.loop(pimu)
@@ -246,7 +251,8 @@ compats.sort()
 print compats
 print scales
 flimmy = Player()
-valjean = SoundControl()
+valjean = SoundControl(0.5)
+valjean.set_vol()
 raga = Grid()
 pygame.mixer.init()
 stimpy = Note(tone='b',grid=raga)
